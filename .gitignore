@@ -66,6 +66,9 @@ yarn-error.log
 # testing
 /coverage
 
+# Local API override (physical device / custom host)
+src/services/apiConfig.override.ts
+
 # Yarn
 .yarn/*
 !.yarn/patches
