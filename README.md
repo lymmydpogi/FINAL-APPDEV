@@ -60,6 +60,10 @@ yarn ios
 
 If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
 
+### Tab bar & list icons
+
+The client UI uses **[Lucide](https://lucide.dev/)** icons via `lucide-react-native` and `react-native-svg` (vector paths — no `.ttf` font linking). If you add new screens with icons, import them from `lucide-react-native`.
+
 This is one way to run your app — you can also build it directly from Android Studio or Xcode.
 
 ## Step 3: Modify your app
