@@ -1,116 +1,114 @@
 import React, { useState } from 'react';
-import { Text, View, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import CustomTextInput from '../../components/CustomTextInput';
-import CustomButton from '../../components/CustomButton';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ROUTES } from '../../utils';
+import type { StackNavigationProp } from '@react-navigation/stack';
+
+import { Card, CustomButton, CustomInput, ScreenLayout } from '../../components';
+import { register as registerApi } from '../../services/authApi';
+import type { RootStackParamList } from '../../types/navigation';
+import { commonStyles, theme } from '../../theme/tokens';
+import { BRAND_NAME, IMG, ROUTES } from '../../utils';
 
 const Register = () => {
-    const [firstName, setFirstName] = useState('');
-    const [middleName, setMiddleName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [birthdate, setBirthdate] = useState('');
-    const [accepted, setAccepted] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-    const onRegister = () => {
-        if (!firstName || !lastName || !birthdate) {
-            Alert.alert('Missing fields', 'Please fill First Name, Last Name and Birthdate');
-            return;
-        }
-        if (!accepted) {
-            Alert.alert('Terms', 'You must accept terms and conditions to register');
-            return;
-        }
-        //Null
-        Alert.alert('Success', 'Registration complete');
-        navigation.navigate(ROUTES.LOGIN);
-    };
+  const onRegister = async () => {
+    if (!email || !password) {
+      setError('Email and password are required.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError('Passwords do not match.');
+      return;
+    }
 
-    return (
-        <ScrollView
-        contentContainerStyle={{
-            flexGrow: 1,
-            padding: 20,
-            backgroundColor: '#F8FAFC',
-            justifyContent: 'center',
-        }}
-        >
-        <View style={{ width: '100%' }}>
-            {['First Name', 'Middle Name', 'Last Name', 'Birthdate'].map((label, idx) => (
-            <CustomTextInput
-                key={idx}
-                label={label}
-                placeholder={`Enter ${label}`}
-                value={
-                label === 'First Name'
-                    ? firstName
-                    : label === 'Middle Name'
-                    ? middleName
-                    : label === 'Last Name'
-                    ? lastName
-                    : birthdate
-                }
-                onChangeText={
-                label === 'First Name'
-                    ? setFirstName
-                    : label === 'Middle Name'
-                    ? setMiddleName
-                    : label === 'Last Name'
-                    ? setLastName
-                    : setBirthdate
-                }
-                containerStyle={{ marginBottom: 15 }}
-                textStyle={{
-                borderRadius: 10,
-                paddingHorizontal: 10,
-                paddingVertical: 8,
-                borderWidth: 1,
-                borderColor: '#CBD5E1',
-                backgroundColor: '#FFF',
-                fontWeight: '500',
-                color: '#111827',
-                }}
-            />
-            ))}
+    setLoading(true);
+    setError(null);
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-            <TouchableOpacity
-                onPress={() => setAccepted(!accepted)}
-                style={{
-                width: 24,
-                height: 24,
-                borderWidth: 1,
-                borderColor: '#6B7280',
-                borderRadius: 6,
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: accepted ? '#16A34A' : 'transparent',
-                }}
-            >
-                {accepted && <Text style={{ color: '#FFF', fontSize: 16 }}>✓</Text>}
-            </TouchableOpacity>
-            <Text style={{ marginLeft: 10, color: '#374151', fontWeight: '500' }}>
-                I accept the Terms and Conditions
-            </Text>
-            </View>
+    try {
+      const data = await registerApi({
+        email: email.trim(),
+        password,
+        passwordConfirm,
+        name: name.trim() || undefined,
+      });
+      navigation.replace(ROUTES.VERIFY_EMAIL_PENDING, {
+        email: email.trim(),
+        verifyUrl: data.verification?.api ?? data.verification?.web,
+      });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <CustomButton
-            label="REGISTER"
-            containerStyle={{
-                backgroundColor: '#16A34A',
-                borderRadius: 12,
-                width: '85%',
-                alignSelf: 'center',
-                paddingVertical: 10,
-            }}
-            textStyle={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}
+  return (
+    <ScreenLayout scroll ambient>
+      <View style={[styles.container, commonStyles.maxWidthCenter]}>
+        <Image source={IMG.LOGO} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.brand}>{BRAND_NAME}</Text>
+        <Text style={styles.overline}>New client</Text>
+        <Text style={styles.caption}>Create your account — we will email you to verify.</Text>
+
+        <Card elevated style={styles.card}>
+          <CustomInput label="Name" placeholder="Optional" value={name} onChangeText={setName} />
+          <CustomInput label="Email" placeholder="you@example.com" value={email} onChangeText={setEmail} />
+          <CustomInput
+            label="Password"
+            placeholder="Min. 8 characters"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+          <CustomInput
+            label="Confirm password"
+            placeholder="Repeat password"
+            value={passwordConfirm}
+            onChangeText={setPasswordConfirm}
+            secureTextEntry
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <CustomButton
+            title="Register"
             onPress={onRegister}
-            />
-        </View>
-        </ScrollView>
-    );
+            loading={loading}
+            disabled={loading}
+            fullWidth
+          />
+        </Card>
+
+        <TouchableOpacity style={styles.back} onPress={() => navigation.navigate(ROUTES.LOGIN)}>
+          <Text style={styles.link}>Already have an account? Sign in</Text>
+        </TouchableOpacity>
+      </View>
+    </ScreenLayout>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: { width: '100%', paddingBottom: theme.spacing.xl },
+  logo: { width: 100, height: 40, alignSelf: 'center', marginBottom: theme.spacing.md },
+  brand: { ...theme.typography.brand, textAlign: 'center' },
+  overline: { ...theme.typography.overline, textAlign: 'center', marginBottom: theme.spacing.xs },
+  caption: { ...theme.typography.caption, textAlign: 'center', marginBottom: theme.spacing.lg, marginTop: theme.spacing.xs },
+  card: { marginBottom: theme.spacing.md },
+  error: { color: theme.colors.error, textAlign: 'center', marginBottom: theme.spacing.md },
+  back: { marginTop: theme.spacing.lg, alignItems: 'center' },
+  link: { color: theme.colors.primaryLight, fontWeight: '600' },
+});
 
 export default Register;
