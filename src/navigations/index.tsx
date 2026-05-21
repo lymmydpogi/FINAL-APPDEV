@@ -1,25 +1,29 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { useEffect } from 'react';
-import { Platform, StatusBar, useColorScheme } from 'react-native';
-import { useSelector } from 'react-redux';
+import { Platform, StatusBar } from 'react-native';
 
-import AuthNav from './AuthNav';
-import MainNav from './MainNav';
+import AuthGate from '../components/AuthGate';
+import AuthInterceptors from '../components/AuthInterceptors';
+import { linking } from './linking';
+import { navigationRef } from './navigationRef';
+import RootNav from './RootNav';
 
-export default () => {
-  const isDarkMode = useColorScheme() === 'dark';
-  const auth = useSelector(state => state.auth);
-  const isLoggedIn = !!auth?.data;
+export { navigationRef } from './navigationRef';
 
+export default function AppNavigation() {
   useEffect(() => {
+    StatusBar.setBarStyle('light-content', true);
     if (Platform.OS === 'android') {
-      StatusBar.setBarStyle('dark-content', true);
+      StatusBar.setBackgroundColor('#020617', true);
     }
-  }, [isDarkMode]);
+  }, []);
 
   return (
-    <NavigationContainer>
-      {isLoggedIn ? <MainNav /> : <AuthNav />}
+    <NavigationContainer ref={navigationRef} linking={linking as never}>
+      <AuthInterceptors />
+      <AuthGate>
+        <RootNav />
+      </AuthGate>
     </NavigationContainer>
   );
-};
+}
