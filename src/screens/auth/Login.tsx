@@ -1,101 +1,145 @@
-import { useState, useEffect } from 'react';
-import { Image, Alert, Text, TouchableOpacity, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useDispatch, useSelector } from 'react-redux';
 
-import CustomButton from '../../components/CustomButton';
-import CustomTextInput from '../../components/CustomTextInput';
-import { IMG, ROUTES } from '../../utils';
-import { authLogin } from '../../app/actions';
+import { authGoogleLogin, authLogin } from '../../app/actions';
+import { friendlyAuthMessage } from '../../constants/mobileAuth';
+import { Card, CustomButton, CustomInput, ScreenLayout, useToast } from '../../components';
+import type { RootStackParamList } from '../../types/navigation';
+import type { RootState } from '../../types/redux';
+import type { SessionPayload } from '../../types/redux';
+import { commonStyles, theme } from '../../theme/tokens';
+import { BRAND_NAME, IMG, ROUTES } from '../../utils';
+import { navigateAfterAuth } from '../../utils/navigateAfterAuth';
 
 const Login = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, typeof ROUTES.LOGIN>>();
   const dispatch = useDispatch();
-  const auth = useSelector(state => state.auth);
+  const auth = useSelector((state: RootState) => state.auth);
+  const { showToast } = useToast();
+
+  const inlineError =
+    auth.isError && auth.error
+      ? friendlyAuthMessage(auth.error)
+      : null;
 
   useEffect(() => {
-    if (!auth.isLoading && auth.isError && auth.error) {
-      Alert.alert('Login failed', auth.error);
+    if (!auth.isLoading && auth.isError && auth.error && auth.error.trim() !== '') {
+      setPassword('');
     }
   }, [auth.isLoading, auth.isError, auth.error]);
 
-  const inputStyle = {
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFF',
-    fontWeight: '500',
-    color: '#111827',
+  useEffect(() => {
+    if (!auth.isLoading && auth.data) {
+      showToast('Welcome back', 'success');
+      navigateAfterAuth(
+        navigation,
+        auth.data as SessionPayload,
+        route.params?.returnTo,
+      );
+    }
+  }, [auth.isLoading, auth.data, navigation, route.params?.returnTo, showToast]);
+
+  const onLogin = () => {
+    if (auth.isLoading) {
+      return;
+    }
+    if (!email.trim() || !password) {
+      showToast('Enter your email and password.', 'error');
+      return;
+    }
+    dispatch(authLogin({ username: email.trim(), password }));
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        padding: 20,
-        backgroundColor: '#F8FAFC',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Image
-        source={IMG.LOGO}
-        style={{ width: 220, height: 80, marginBottom: 30 }}
-        resizeMode="contain"
-      />
+    <ScreenLayout scroll centered ambient>
+      <View style={[styles.container, commonStyles.maxWidthCenter]}>
+        <Image source={IMG.LOGO} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.brand}>{BRAND_NAME}</Text>
+        <Text style={styles.overline}>Welcome back</Text>
+        <Text style={styles.caption}>Sign in to continue</Text>
 
-      <View style={{ width: '100%' }}>
-        <CustomTextInput
-          label="Email"
-          placeholder="Enter Email"
-          value={username}
-          onChangeText={setUsername}
-          containerStyle={{ marginBottom: 15 }}
-          textStyle={inputStyle}
-        />
+        <Card elevated style={styles.card}>
+          <CustomInput
+            label="Email"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={setEmail}
+            editable={!auth.isLoading}
+          />
+          <CustomInput
+            label="Password"
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            editable={!auth.isLoading}
+          />
 
-        <CustomTextInput
-          label="Password"
-          placeholder="Enter Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          containerStyle={{ marginBottom: 20 }}
-          textStyle={inputStyle}
-        />
+          {inlineError ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{inlineError}</Text>
+            </View>
+          ) : null}
+
+          <CustomButton
+            title="Sign in with email"
+            onPress={onLogin}
+            loading={auth.isLoading}
+            disabled={auth.isLoading}
+            fullWidth
+          />
+
+          <Text style={styles.divider}>or</Text>
+
+          <CustomButton
+            title="Continue with Google"
+            variant="outline"
+            onPress={() => dispatch(authGoogleLogin())}
+            loading={auth.isLoading}
+            disabled={auth.isLoading}
+            fullWidth
+          />
+        </Card>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>No account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate(ROUTES.REGISTER)}>
+            <Text style={styles.link}>Register</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
-      <CustomButton
-        label="LOGIN"
-        containerStyle={{
-          backgroundColor: '#1E3A8A',
-          borderRadius: 12,
-          width: '85%',
-          marginVertical: 15,
-        }}
-        textStyle={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}
-        onPress={() => {
-          if (!username || !password) {
-            Alert.alert('Invalid Credentials', 'Please enter valid username and password');
-            return;
-          }
-          dispatch(authLogin({ username, password }));
-        }}
-      />
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-        <Text style={{ color: '#374151' }}>Create an account?</Text>
-        <TouchableOpacity onPress={() => navigation.navigate(ROUTES.REGISTER)}>
-          <Text style={{ color: '#10B981', marginLeft: 6, fontWeight: 'bold' }}>Register</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    </ScreenLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  container: { width: '100%', paddingBottom: theme.spacing.xl },
+  logo: { width: 120, height: 48, alignSelf: 'center', marginBottom: theme.spacing.md },
+  brand: { ...theme.typography.brand, textAlign: 'center', marginBottom: theme.spacing.xs },
+  overline: { ...theme.typography.overline, textAlign: 'center', marginBottom: theme.spacing.xs },
+  caption: { ...theme.typography.caption, textAlign: 'center', marginBottom: theme.spacing.lg },
+  card: { marginBottom: theme.spacing.lg },
+  errorBox: {
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.errorBg,
+    borderWidth: 1,
+    borderColor: theme.colors.errorBorder,
+  },
+  errorText: { color: theme.colors.error, fontSize: 14, fontWeight: '500', lineHeight: 22 },
+  divider: { textAlign: 'center', color: theme.colors.textMuted, marginVertical: theme.spacing.md, fontSize: 14 },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: theme.spacing.lg, gap: 6 },
+  footerText: { ...theme.typography.caption },
+  link: { color: theme.colors.primaryLight, fontWeight: '600', fontSize: 14 },
+});
 
 export default Login;
