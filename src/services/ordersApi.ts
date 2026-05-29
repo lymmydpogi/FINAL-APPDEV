@@ -1,5 +1,7 @@
 import type { ClientOrder } from '../types/api';
 import { parseEnvelope, throwIfApiError } from '../utils/apiEnvelope';
+import { markOrderMutatedByClient } from '../utils/orderMutationGuard';
+import { sortOrdersNewestFirst } from '../utils/sortOrders';
 import apiClient from './apiClient';
 import { API_ROUTES } from './apiRoutes';
 import { OrderApiError, parseOrderApiError } from './orderApiError';
@@ -25,6 +27,7 @@ function mapOrder(raw: ClientOrder): ClientOrder {
     orderDate: raw.orderDate,
     paymentMethod: raw.paymentMethod ?? '',
     paymentStatus: raw.paymentStatus ?? '',
+    deliveryDate: raw.deliveryDate ?? null,
     canEdit: Boolean(raw.canEdit),
     canCancel: Boolean(raw.canCancel),
   };
@@ -34,7 +37,7 @@ export async function listOrders(): Promise<ClientOrder[]> {
   try {
     const response = await apiClient.get(API_ROUTES.clientOrders);
     const data = throwIfApiError<{ orders: ClientOrder[] }>(response.data);
-    return (data.orders ?? []).map(mapOrder);
+    return sortOrdersNewestFirst((data.orders ?? []).map(mapOrder));
   } catch (error) {
     throw parseOrderApiError(error, 'Could not load orders');
   }
@@ -57,11 +60,13 @@ export async function getOrder(id: number): Promise<ClientOrder> {
 export async function createOrderFromService(
   serviceId: number,
   projectBrief: string,
+  serviceSlug?: string,
 ): Promise<CreateOrderResult> {
   try {
     const response = await apiClient.post(API_ROUTES.clientOrderFromService, {
       serviceId,
       projectBrief,
+      ...(serviceSlug ? { serviceSlug } : {}),
     });
     const envelope = parseEnvelope<{
       order: ClientOrder;
@@ -99,7 +104,9 @@ export async function updateOrder(id: number, body: UpdateOrderBody): Promise<Cl
     if (!data.order) {
       throw new OrderApiError('Order updated but no order data was returned.');
     }
-    return mapOrder(data.order);
+    const order = mapOrder(data.order);
+    markOrderMutatedByClient(id);
+    return order;
   } catch (error) {
     throw parseOrderApiError(error, 'Could not update order');
   }
@@ -112,7 +119,9 @@ export async function cancelOrder(id: number): Promise<ClientOrder> {
     if (!data.order) {
       throw new OrderApiError('Order cancelled but no order data was returned.');
     }
-    return mapOrder(data.order);
+    const order = mapOrder(data.order);
+    markOrderMutatedByClient(id);
+    return order;
   } catch (error) {
     throw parseOrderApiError(error, 'Could not cancel order');
   }

@@ -13,6 +13,7 @@ import OrderDetailScreen from '../screens/client/OrderDetailScreen';
 import OrderEditScreen from '../screens/client/OrderEditScreen';
 import type { RootStackParamList } from '../types/navigation';
 import { ROUTES } from '../utils';
+import AdminActivityNotifier from '../components/AdminActivityNotifier';
 import AdminReplyNotifier from '../components/AdminReplyNotifier';
 import ClientTabs from './ClientTabs';
 import { appStackScreenOptions } from './screenOptions';
@@ -22,6 +23,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 const RootNav = () => (
   <>
     <AdminReplyNotifier />
+    <AdminActivityNotifier />
     <Stack.Navigator screenOptions={appStackScreenOptions}>
     <Stack.Screen name={ROUTES.MAIN_TABS} component={ClientTabs} options={{ headerShown: false }} />
     <Stack.Screen
@@ -36,7 +38,7 @@ const RootNav = () => (
     <Stack.Screen
       name={ROUTES.VERIFY_EMAIL_PENDING}
       component={VerifyEmailPendingScreen}
-      options={{ title: 'Verify email' }}
+      options={{ title: 'Verify email', gestureEnabled: true }}
     />
     <Stack.Screen
       name={ROUTES.VERIFY_EMAIL}

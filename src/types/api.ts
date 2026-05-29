@@ -37,6 +37,7 @@ export type ClientOrder = {
   orderDate: string;
   paymentMethod: string;
   paymentStatus: string;
+  deliveryDate?: string | null;
   canEdit: boolean;
   canCancel: boolean;
 };
